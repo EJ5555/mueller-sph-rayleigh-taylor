@@ -53,7 +53,6 @@ static vector<Particle> particles;
 // interaction
 const static int MAX_PARTICLES = 10000;
 const static int DAM_PARTICLES = 40000;
-const static int ROW_PARTICLES = 60000;
 const static int BLOCK_PARTICLES = 250;
 
 // rendering projection parameters
@@ -67,7 +66,7 @@ void InitSPH(void)
 	cout << "initializing dam break with " << DAM_PARTICLES << " particles" << endl;
 	for (float y = EPS; y < VIEW_HEIGHT/3; y += 1.f * H/1.5){
 		for (float x = 2.f * EPS; x <= VIEW_WIDTH - 2.f * EPS; x += 0.5 * H){
-			if (particles.size() < ROW_PARTICLES)
+			if (particles.size() < MAX_PARTICLES)
 			{
 				float jitter = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
         if (particles.size()%2==0){
