@@ -16,12 +16,12 @@ using namespace Eigen;
 const static Vector2d G(0.f, 12000 * -9.8f); // external (gravitational) forces
 const static float REST_DENS = 500.f;		 // rest density
 const static float REST_DENS2 = 500.f;
-const static float GAS_CONST = 5000.f;		 // const for equation of state
-const static float H = 16.f;				 // kernel radius
+const static float GAS_CONST = 5800.f;		 // const for equation of state
+const static float H = 17.f;				 // kernel radius
 const static float HSQ = H * H;				 // radius^2 for optimization
-const static float MASS = 50.f;				 // assume all particles have the same mass
-const static float MASS2 = 150.f;
-const static float VISC = 250.f;			 // viscosity constant
+const static float MASS = 55.f;				 // assume all particles have the same mass
+const static float MASS2 = 50.f;
+const static float VISC = 550.f;			 // viscosity constant
 const static float DT = 0.0008f;			 // integration timestep
 
 // smoothing kernels defined in Müller and their gradients
@@ -41,7 +41,8 @@ struct Particle
 	Particle(float _x, float _y, float _m, float _rd, string _color) : x(_x, _y), v(0.f, 0.f), f(0.f, 0.f), rho(0), p(0.f), m(_m), rd(_rd), color(_color) {}
 	Vector2d x, v, f;
 	float rho, p;
-  const float m, rd;
+  float m;
+	const float rd;
   const string color;
 };
 
@@ -51,7 +52,8 @@ static vector<Particle> particles;
 
 // interaction
 const static int MAX_PARTICLES = 10000;
-const static int DAM_PARTICLES = 10000;
+const static int DAM_PARTICLES = 40000;
+const static int ROW_PARTICLES = 60000;
 const static int BLOCK_PARTICLES = 250;
 
 // rendering projection parameters
@@ -63,15 +65,15 @@ const static double VIEW_HEIGHT = 1.5 * 600.f;
 void InitSPH(void)
 {
 	cout << "initializing dam break with " << DAM_PARTICLES << " particles" << endl;
-	for (float y = EPS; y < VIEW_HEIGHT/5; y += H/3){
-		for (float x = 2.f * EPS; x <= VIEW_WIDTH - 2.f * EPS; x += H){
-			if (particles.size() < DAM_PARTICLES)
+	for (float y = EPS; y < VIEW_HEIGHT/3; y += 1.f * H/1.5){
+		for (float x = 2.f * EPS; x <= VIEW_WIDTH - 2.f * EPS; x += 0.5 * H){
+			if (particles.size() < ROW_PARTICLES)
 			{
 				float jitter = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
         if (particles.size()%2==0){
 				      particles.push_back(Particle(x + jitter, y, MASS, REST_DENS, "blue"));
         } else {
-				      particles.push_back(Particle(x + jitter, y + VIEW_HEIGHT/5, MASS2, REST_DENS2, "red"));
+				      particles.push_back(Particle(x + jitter, y + VIEW_HEIGHT/2.95, MASS2, REST_DENS2, "red"));
           }
 			}
     }
@@ -210,15 +212,22 @@ void Keyboard(unsigned char c, __attribute__((unused)) int x, __attribute__((unu
 	switch (c)
 	{
 	case ' ':
-		if (particles.size() >= MAX_PARTICLES)
-			std::cout << "maximum number of particles reached" << std::endl;
-		else
-		{
-			unsigned int placed = 0;
-			for (float y = VIEW_HEIGHT / 1.5f - VIEW_HEIGHT / 5.f; y < VIEW_HEIGHT / 1.5f + VIEW_HEIGHT / 5.f; y += H * 0.95f)
-				for (float x = VIEW_WIDTH / 2.f - VIEW_HEIGHT / 5.f; x <= VIEW_WIDTH / 2.f + VIEW_HEIGHT / 5.f; x += H * 0.95f)
-					if (placed++ < BLOCK_PARTICLES && particles.size() < MAX_PARTICLES)
-						particles.push_back(Particle(x, y, MASS, REST_DENS, "blue"));
+		//if (particles.size() >= MAX_PARTICLES)
+			//std::cout << "maximum number of particles reached" << std::endl;
+		//else
+		//{
+		//	unsigned int placed = 0;
+		//	for (float y = VIEW_HEIGHT / 1.5f - VIEW_HEIGHT / 5.f; y < VIEW_HEIGHT / 1.5f + VIEW_HEIGHT / 5.f; y += H * 0.95f)
+		//		for (float x = VIEW_WIDTH / 2.f - VIEW_HEIGHT / 5.f; x <= VIEW_WIDTH / 2.f + VIEW_HEIGHT / 5.f; x += H * 0.95f)
+		//			if (placed++ < BLOCK_PARTICLES && particles.size() < MAX_PARTICLES)
+		//				particles.push_back(Particle(x, y, MASS, REST_DENS, "blue"));
+		//}
+		for(auto &p: particles){
+			if (p.m == MASS){
+				p.m = MASS2;
+			} else {
+				p.m = MASS;
+			}
 		}
 		break;
 	case 'r':
