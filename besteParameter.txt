@@ -20,3 +20,16 @@ const static float MASS = 55.f;				 // assume all particles have the same mass
 const static float MASS2 = 50.f;
 const static float VISC = 550.f;			 // viscosity constant
 const static float DT = 0.0008f;			 // integration timestep
+
+//Parameter 3:
+static Vector2d G(0.f, 12000.f * -9.8f); // external (gravitational) forces
+const static float REST_DENS = 1000.f;		 // rest density
+const static float REST_DENS2 = 1000.f;
+const static float GAS_CONST = 3250.f;		 // const for equation of state
+const static float gamma = 1.f; 	// Inkompressibilität
+const static float H = 16.f;				 // kernel radius
+const static float HSQ = H * H;				 // radius^2 for optimization
+const static float MASS = 65.f;				 // assume all particles have the same mass
+const static float MASS2 = 60.f;
+const static float VISC = 250.f;			 // viscosity constant
+const static float DT = 0.0008f;			 // integration timestep

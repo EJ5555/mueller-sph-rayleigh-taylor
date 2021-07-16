@@ -13,15 +13,16 @@ using namespace Eigen;
 
 // "Particle-Based Fluid Simulation for Interactive Applications"
 // solver parameters
-const static Vector2d G(0.f, 12000 * -9.8f); // external (gravitational) forces
-const static float REST_DENS = 500.f;		 // rest density
-const static float REST_DENS2 = 500.f;
-const static float GAS_CONST = 5800.f;		 // const for equation of state
-const static float H = 17.f;				 // kernel radius
+static Vector2d G(0.f, 12000.f * -9.8f); // external (gravitational) forces
+const static float REST_DENS = 1000.f;		 // rest density
+const static float REST_DENS2 = 1000.f;
+const static float GAS_CONST = 3250.f;		 // const for equation of state
+const static float GAMMA = 1.f; 	// Inkompressibilität
+const static float H = 16.f;				 // kernel radius
 const static float HSQ = H * H;				 // radius^2 for optimization
-const static float MASS = 55.f;				 // assume all particles have the same mass
-const static float MASS2 = 50.f;
-const static float VISC = 550.f;			 // viscosity constant
+const static float MASS = 65.f;				 // assume all particles have the same mass
+const static float MASS2 = 60.f;
+const static float VISC = 250.f;			 // viscosity constant
 const static float DT = 0.0008f;			 // integration timestep
 
 // smoothing kernels defined in Müller and their gradients
@@ -33,6 +34,9 @@ const static float VISC_LAP = 45.f / (M_PI * pow(H, 6.f));
 const static float EPS = H; // boundary epsilon
 const static float BOUND_DAMPING = -0.5f;
 
+//leapfrog
+static bool first = true;
+
 // particle data structure
 // stores position, velocity, and force for integration
 // stores density (rho) and pressure values for SPH
@@ -42,7 +46,7 @@ struct Particle
 	Vector2d x, v, f;
 	float rho, p;
   float m;
-	const float rd;
+	float rd;
   const string color;
 };
 
@@ -51,7 +55,7 @@ static vector<Particle> particles;
 //static vector<Particle> particles2;
 
 // interaction
-const static int MAX_PARTICLES = 10000;
+const static int MAX_PARTICLES = 3000;
 const static int DAM_PARTICLES = 40000;
 const static int BLOCK_PARTICLES = 250;
 
@@ -63,53 +67,22 @@ const static double VIEW_HEIGHT = 1.5 * 600.f;
 
 void InitSPH(void)
 {
-	cout << "initializing dam break with " << DAM_PARTICLES << " particles" << endl;
-	for (float y = EPS; y < VIEW_HEIGHT/3; y += 1.f * H/1.5){
+	cout << "initializing dam break with " << MAX_PARTICLES << " particles" << endl;
+	for (float y = EPS; y < VIEW_HEIGHT/2; y += 1.f * H/1.5){
 		for (float x = 2.f * EPS; x <= VIEW_WIDTH - 2.f * EPS; x += 0.5 * H){
 			if (particles.size() < MAX_PARTICLES)
 			{
 				float jitter = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
         if (particles.size()%2==0){
-				      particles.push_back(Particle(x + jitter, y, MASS, REST_DENS, "blue"));
+				      particles.push_back(Particle(x + jitter, y + 0.1 * VIEW_HEIGHT * sin(2 * M_PI * (x+jitter)/(VIEW_WIDTH - 2.f * EPS)), MASS, REST_DENS, "blue"));
         } else {
-				      particles.push_back(Particle(x + jitter, y + VIEW_HEIGHT/2.95, MASS2, REST_DENS2, "red"));
+				      particles.push_back(Particle(x + jitter, y + 0.1 * VIEW_HEIGHT * sin(2 * M_PI * (x+jitter)/(VIEW_WIDTH - 2.f * EPS)) + VIEW_HEIGHT/2, MASS2, REST_DENS2, "red"));
           }
 			}
     }
     }
   }
 
-void Integrate(void)
-{
-	for (auto &p : particles)
-	{
-		// forward Euler integration
-		p.v += DT * p.f / p.rho;
-		p.x += DT * p.v;
-
-		// enforce boundary conditions
-		if (p.x(0) - EPS < 0.0f)
-		{
-			p.v(0) *= BOUND_DAMPING;
-			p.x(0) = EPS;
-		}
-		if (p.x(0) + EPS > VIEW_WIDTH)
-		{
-			p.v(0) *= BOUND_DAMPING;
-			p.x(0) = VIEW_WIDTH - EPS;
-		}
-		if (p.x(1) - EPS < 0.0f)
-		{
-			p.v(1) *= BOUND_DAMPING;
-			p.x(1) = EPS;
-		}
-		if (p.x(1) + EPS > VIEW_HEIGHT)
-		{
-			p.v(1) *= BOUND_DAMPING;
-			p.x(1) = VIEW_HEIGHT - EPS;
-		}
-	}
-}
 
 void ComputeDensityPressure(void)
 {
@@ -127,7 +100,7 @@ void ComputeDensityPressure(void)
 				pi.rho += pi.m * POLY6 * pow(HSQ - r2, 3.f);
 			}
 		}
-		pi.p = GAS_CONST * (pi.rho - pi.rd);
+		pi.p = GAS_CONST * pow(pi.rho - pi.rd, GAMMA);
 	}
 }
 
@@ -156,6 +129,50 @@ void ComputeForces(void)
 		Vector2d fgrav = G * pi.rho;
 		pi.f = fpress + fvisc + fgrav;
 	}
+}
+
+
+void Integrate(void)
+{
+	if (first == true){
+	for (auto &p : particles){
+		p.v += DT/2 * p.f / p.rho;
+		first = false;
+		}
+	}
+	for (auto &p : particles)
+	{
+		// forward Euler integration, now leapfrog
+		p.x += DT * p.v;
+
+		// enforce boundary conditions
+		if (p.x(0) - EPS < 0.0f)
+		{
+			p.v(0) *= BOUND_DAMPING;
+			p.x(0) = EPS;
+		}
+		if (p.x(0) + EPS > VIEW_WIDTH)
+		{
+			p.v(0) *= BOUND_DAMPING;
+			p.x(0) = VIEW_WIDTH - EPS;
+		}
+		if (p.x(1) - EPS < 0.0f)
+		{
+			p.v(1) *= BOUND_DAMPING;
+			p.x(1) = EPS;
+		}
+		if (p.x(1) + EPS > VIEW_HEIGHT)
+		{
+			p.v(1) *= BOUND_DAMPING;
+			p.x(1) = VIEW_HEIGHT - EPS;
+		}
+	}
+	ComputeDensityPressure();
+	ComputeForces();
+	for (auto &p : particles){
+		p.v += DT * p.f / p.rho;
+	}
+
 }
 
 void Update(void)
@@ -224,10 +241,13 @@ void Keyboard(unsigned char c, __attribute__((unused)) int x, __attribute__((unu
 		for(auto &p: particles){
 			if (p.m == MASS){
 				p.m = MASS2;
+				p.rd = REST_DENS2;
 			} else {
 				p.m = MASS;
+				p.rd = REST_DENS;
 			}
 		}
+		//G[1] = 5000.f * -9.8f;
 		break;
 	case 'r':
 	case 'R':
