@@ -13,6 +13,7 @@ using namespace Eigen;
 
 // "Particle-Based Fluid Simulation for Interactive Applications"
 // solver parameters
+const static float M_PI = 3.14159265359;
 const static Vector2d G(0.f, 12000 * -9.8f); // external (gravitational) forces
 const static float REST_DENS = 1000.f;		 // rest density
 const static float GAS_CONST = 2000.f;		 // const for equation of state

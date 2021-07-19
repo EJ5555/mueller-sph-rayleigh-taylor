@@ -6,21 +6,21 @@
 #OPENGL_LIBS       = -framework OpenGL -framework GLUT
 
 # # Linux
-INCLUDE_PATH      =
-LIBRARY_PATH      =
-OPENGL_LIBS       = -lglut -lGL -lX11
+#INCLUDE_PATH      =
+#LIBRARY_PATH      =
+#OPENGL_LIBS       = -lglut -lGL -lX11
 
 # # Windows / Cygwin
-# INCLUDE_PATH      = -I/usr/include/opengl
-# LIBRARY_PATH      = -L/usr/lib/w32api
-# OPENGL_LIBS       = -lglut32 -lopengl32
+ INCLUDE_PATH      = -I/usr/include/opengl
+ LIBRARY_PATH      = -L/usr/lib/w32api
+ OPENGL_LIBS       = -lglut -lopengl32 -lm
 
 #######################################################################################################
 
 TARGET = sph
 SEC_TARGET = sph-rt
-CC = g++
-LD = g++
+CC = g++ -fopenmp
+LD = g++ -fopenmp
 CFLAGS = -std=c++11 -O3 -Wall -Wno-deprecated -pedantic -Wno-vla-extension $(INCLUDE_PATH) -I./include -I./src -DNDEBUG
 LFLAGS = -std=c++11 -O3 -Wall -Wno-deprecated -Werror -pedantic $(LIBRARY_PATH) -DNDEBUG
 LIBS = $(OPENGL_LIBS)
@@ -28,7 +28,7 @@ LIBS = $(OPENGL_LIBS)
 OBJS = obj/main.o
 SEC_OBJS = obj/main-rt.o
 
-default: $(TARGET)
+default: $(SEC_TARGET)
 
 all: clean $(TARGET)
 

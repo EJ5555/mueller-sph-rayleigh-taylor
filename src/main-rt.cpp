@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <vector>
+#include <omp.h>
 using namespace std;
 
 #include <eigen3/Eigen/Dense>
@@ -13,16 +14,18 @@ using namespace Eigen;
 
 // "Particle-Based Fluid Simulation for Interactive Applications"
 // solver parameters
+const static float M_PI = 3.14159265359;
 static Vector2d G(0.f, 12000.f * -9.8f); // external (gravitational) forces
 const static float REST_DENS = 1000.f;		 // rest density
 const static float REST_DENS2 = 1000.f;
-const static float GAS_CONST = 3250.f;		 // const for equation of state
-const static float GAMMA = 1.f; 	// Inkompressibilität
+const static float GAS_CONST = 1800.f;		 // const for equation of state
+const static float GAS_CONST2 = 2500.f;
+const static float GAMMA = 1.085f; 	// Inkompressibilität
 const static float H = 16.f;				 // kernel radius
 const static float HSQ = H * H;				 // radius^2 for optimization
-const static float MASS = 65.f;				 // assume all particles have the same mass
-const static float MASS2 = 60.f;
-const static float VISC = 250.f;			 // viscosity constant
+const static float MASS = 60.f;				 // assume all particles have the same mass
+const static float MASS2 = 90.f;
+const static float VISC = 200.f;			 // viscosity constant
 const static float DT = 0.0008f;			 // integration timestep
 
 // smoothing kernels defined in Müller and their gradients
@@ -37,16 +40,18 @@ const static float BOUND_DAMPING = -0.5f;
 //leapfrog
 static bool first = true;
 
+
 // particle data structure
 // stores position, velocity, and force for integration
 // stores density (rho) and pressure values for SPH
 struct Particle
 {
-	Particle(float _x, float _y, float _m, float _rd, string _color) : x(_x, _y), v(0.f, 0.f), f(0.f, 0.f), rho(0), p(0.f), m(_m), rd(_rd), color(_color) {}
+	Particle(float _x, float _y, float _m, float _rd, float _gc, string _color) : x(_x, _y), v(0.f, 0.f), f(0.f, 0.f), rho(0), p(0.f), m(_m), rd(_rd), gc(_gc), color(_color) {}
 	Vector2d x, v, f;
 	float rho, p;
   float m;
 	float rd;
+	float gc;
   const string color;
 };
 
@@ -55,7 +60,7 @@ static vector<Particle> particles;
 //static vector<Particle> particles2;
 
 // interaction
-const static int MAX_PARTICLES = 3000;
+const static int MAX_PARTICLES = 2500;
 const static int DAM_PARTICLES = 40000;
 const static int BLOCK_PARTICLES = 250;
 
@@ -65,27 +70,67 @@ const static int WINDOW_HEIGHT = 600;
 const static double VIEW_WIDTH = 1.5 * 800.f;
 const static double VIEW_HEIGHT = 1.5 * 600.f;
 
+
+//Grenzfläche
+static int border = 0;
+static float border_hight = VIEW_HEIGHT / 2 + 2* EPS;
+static float impuls_unten = 0;
+static float impuls_oben = 0;
+
+//Obere Grenzfläche
+static float upper_border = VIEW_HEIGHT;
+
+static float zufall() {
+	double rdn = (float)rand() / RAND_MAX;
+	if (rdn == 1)
+	{
+		rdn = zufall();
+	}
+	return  rdn;
+}
+
 void InitSPH(void)
 {
-	cout << "initializing dam break with " << MAX_PARTICLES << " particles" << endl;
-	for (float y = EPS; y < VIEW_HEIGHT/2; y += 1.f * H/1.5){
-		for (float x = 2.f * EPS; x <= VIEW_WIDTH - 2.f * EPS; x += 0.5 * H){
-			if (particles.size() < MAX_PARTICLES)
-			{
-				float jitter = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-        if (particles.size()%2==0){
-				      particles.push_back(Particle(x + jitter, y + 0.1 * VIEW_HEIGHT * sin(2 * M_PI * (x+jitter)/(VIEW_WIDTH - 2.f * EPS)), MASS, REST_DENS, "blue"));
-        } else {
-				      particles.push_back(Particle(x + jitter, y + 0.1 * VIEW_HEIGHT * sin(2 * M_PI * (x+jitter)/(VIEW_WIDTH - 2.f * EPS)) + VIEW_HEIGHT/2, MASS2, REST_DENS2, "red"));
-          }
-			}
-    }
-    }
+	cout << "initializing " << MAX_PARTICLES << " particles" << endl;
+
+	for (int i = 0; i < MAX_PARTICLES; i++)
+	{
+		float sigma = MASS * MAX_PARTICLES / (VIEW_WIDTH * REST_DENS); //GAS_CONST / (MASS * (-1.f) * G[1]) * 350000.f;
+		float y = -sigma *1000* log(1 - zufall());
+		float x = zufall() * VIEW_WIDTH;
+	
+		particles.push_back(Particle(x, y, MASS, REST_DENS, GAS_CONST, "blue"));
+	}
+	
+
+	//for (auto& p : particles) {
+	//	p.v(0) = 5000.f;
+	//}
+	//for (float y = EPS; y < VIEW_HEIGHT / 2;)
+	//{
+	//	float dh = H/2;
+	//	for (float x = 2.f * EPS; x <= VIEW_WIDTH - 2.f * EPS; x += dh)
+	//	{
+	//		particles.push_back(Particle(x, y, MASS, REST_DENS, "blue"));
+	//	
+	//	}
+	//	y += dh;
+    //}
+	//for (float y = VIEW_HEIGHT / 2 + EPS; y < VIEW_HEIGHT;)
+	//{
+	//	float dh = H/2;
+	//	for (float x = 1.f * EPS; x <= VIEW_WIDTH - 1.f * EPS; x += dh)
+	//	{
+	//		particles.push_back(Particle(x, y, MASS2, REST_DENS2, "red"));
+	//	}
+	//	y += dh;
+	//}
   }
 
 
 void ComputeDensityPressure(void)
 {
+#pragma omp parallel for
 	for (auto &pi : particles)
 	{
 		pi.rho = 0.f;
@@ -100,12 +145,13 @@ void ComputeDensityPressure(void)
 				pi.rho += pi.m * POLY6 * pow(HSQ - r2, 3.f);
 			}
 		}
-		pi.p = GAS_CONST * pow(pi.rho - pi.rd, GAMMA);
+		pi.p = pi.gc * (pi.rho - pi.rd)/abs(pi.rho - pi.rd) * pow(abs(pi.rho - pi.rd), GAMMA);
 	}
 }
 
 void ComputeForces(void)
 {
+#pragma omp parallel for
 	for (auto &pi : particles)
 	{
 		Vector2d fpress(0.f, 0.f);
@@ -135,11 +181,14 @@ void ComputeForces(void)
 void Integrate(void)
 {
 	if (first == true){
+#pragma omp parallel for
 	for (auto &p : particles){
 		p.v += DT/2 * p.f / p.rho;
 		first = false;
 		}
 	}
+	impuls_oben = 0;
+	impuls_unten = 0;
 	for (auto &p : particles)
 	{
 		// forward Euler integration, now leapfrog
@@ -161,14 +210,44 @@ void Integrate(void)
 			p.v(1) *= BOUND_DAMPING;
 			p.x(1) = EPS;
 		}
-		if (p.x(1) + EPS > VIEW_HEIGHT)
+		if ((border == 1 || border == 2) && abs(p.x(1) - border_hight) < EPS)
 		{
-			p.v(1) *= BOUND_DAMPING;
-			p.x(1) = VIEW_HEIGHT - EPS;
+			if (p.x(1) > border_hight)
+			{
+				impuls_unten += abs(p.v(1)) * p.m;
+				p.v(1) *= BOUND_DAMPING;
+				p.x(1) = border_hight + EPS;
+			}
+			else
+			{
+				impuls_oben += abs(p.v(1)) * p.m;
+				p.v(1) *= BOUND_DAMPING;
+				p.x(1) = border_hight - EPS;
+			}
+
 		}
+		if (abs(p.x(1) - upper_border) < EPS)
+		{
+			if (p.x(1) < upper_border)
+			{
+				p.v(1) *= BOUND_DAMPING;
+				p.x(1) = upper_border - EPS;
+			}
+		}
+
+
+		border_hight += (impuls_oben - impuls_unten) * DT / 2000000;
+
+
+		//if (p.x(1) + EPS > VIEW_HEIGHT)
+		//{
+		//	p.v(1) *= -1.f;
+		//	p.x(1) = VIEW_HEIGHT - EPS - (p.x(1) + EPS - VIEW_HEIGHT);
+		//}
 	}
 	ComputeDensityPressure();
 	ComputeForces();
+#pragma omp parallel for
 	for (auto &p : particles){
 		p.v += DT * p.f / p.rho;
 	}
@@ -220,6 +299,16 @@ void Render(void)
   }
   glEnd();
 
+  glColor4f(0.5f, 0.5f, 0.5f, 0.0f);
+	glBegin(GL_POINTS);
+	for (float x = 0; x < VIEW_WIDTH; x += VIEW_WIDTH/10)
+	{
+		glVertex2f(x, border_hight);
+		glVertex2f(x, upper_border);
+	}
+	glEnd();
+
+
 	glutSwapBuffers();
 }
 
@@ -228,37 +317,53 @@ void Keyboard(unsigned char c, __attribute__((unused)) int x, __attribute__((unu
 	switch (c)
 	{
 	case ' ':
-		//if (particles.size() >= MAX_PARTICLES)
-			//std::cout << "maximum number of particles reached" << std::endl;
-		//else
-		//{
-		//	unsigned int placed = 0;
-		//	for (float y = VIEW_HEIGHT / 1.5f - VIEW_HEIGHT / 5.f; y < VIEW_HEIGHT / 1.5f + VIEW_HEIGHT / 5.f; y += H * 0.95f)
-		//		for (float x = VIEW_WIDTH / 2.f - VIEW_HEIGHT / 5.f; x <= VIEW_WIDTH / 2.f + VIEW_HEIGHT / 5.f; x += H * 0.95f)
-		//			if (placed++ < BLOCK_PARTICLES && particles.size() < MAX_PARTICLES)
-		//				particles.push_back(Particle(x, y, MASS, REST_DENS, "blue"));
-		//}
-		for(auto &p: particles){
-			if (p.m == MASS){
-				p.m = MASS2;
-				p.rd = REST_DENS2;
-			} else {
-				p.m = MASS;
-				p.rd = REST_DENS;
+		if (border == 0)
+		{
+			for (int i = 0; i < MAX_PARTICLES/2.f; i++)
+			{
+				float sigma = MASS2 * MAX_PARTICLES / (VIEW_WIDTH * REST_DENS2); //GAS_CONST / (MASS * (-1.f) * G[1]) * 350000.f;
+				float y = -sigma * 1000 * log(1 - zufall()) + border_hight+3*EPS;
+				float x = zufall() * VIEW_WIDTH;
+
+				particles.push_back(Particle(x, y, MASS2, REST_DENS2, GAS_CONST2, "red"));
 			}
+			border += 1;
 		}
+		else
+		{
+			border += 1;
+		}
+
+		//for(auto &p: particles){
+		//	if (p.m == MASS){
+		//		p.m = MASS2;
+		//		p.rd = REST_DENS2;
+		//	} else {
+		//		p.m = MASS;
+		//		p.rd = REST_DENS;
+		//	}
+		//}
 		//G[1] = 5000.f * -9.8f;
 		break;
+	case 'w':
+			upper_border += 10;
+			break;
+		case 's':
+				upper_border -= 10;
+				break;
 	case 'r':
 	case 'R':
 		particles.clear();
 		InitSPH();
+		border_hight = VIEW_HEIGHT / 2;
+		border = 0;
 		break;
 	}
 }
 
 int main(int argc, char **argv)
 {
+	omp_set_num_threads(4);
 	glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 	glutInit(&argc, argv);
 	glutCreateWindow("Müller SPH");
