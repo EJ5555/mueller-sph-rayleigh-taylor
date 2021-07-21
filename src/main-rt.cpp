@@ -107,33 +107,6 @@ void InitSPH(void)
 		float y = -sigma1 * log(exp(-a / sigma1) - zufall() * (exp(-a / sigma1) - exp(-b / sigma1)));
 		float x = zufall() * VIEW_WIDTH;
 
-		particles.push_back(Particle(x, y, MASS, REST_DENS, GAS_CONST, "blue"));
-	}
-
-
-	//for (auto& p : particles) {
-	//	p.v(0) = 5000.f;
-	//}
-	//for (float y = EPS; y < VIEW_HEIGHT / 2;)
-	//{
-	//	float dh = H/2;
-	//	for (float x = 2.f * EPS; x <= VIEW_WIDTH - 2.f * EPS; x += dh)
-	//	{
-	//		particles.push_back(Particle(x, y, MASS, REST_DENS, "blue"));
-	//
-	//	}
-	//	y += dh;
-    //}
-	//for (float y = VIEW_HEIGHT / 2 + EPS; y < VIEW_HEIGHT;)
-	//{
-	//	float dh = H/2;
-	//	for (float x = 1.f * EPS; x <= VIEW_WIDTH - 1.f * EPS; x += dh)
-	//	{
-	//		particles.push_back(Particle(x, y, MASS2, REST_DENS2, "red"));
-	//	}
-	//	y += dh;
-	//}
-
 		particles.push_back(Particle(x, y, MASS, REST_DENS, GAS_CONST, VISC, "blue"));
 	}
 
