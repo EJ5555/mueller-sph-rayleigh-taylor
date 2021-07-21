@@ -6,14 +6,14 @@
 #OPENGL_LIBS       = -framework OpenGL -framework GLUT
 
 # # Linux
-#INCLUDE_PATH      =
-#LIBRARY_PATH      =
-#OPENGL_LIBS       = -lglut -lGL -lX11
+INCLUDE_PATH      =
+LIBRARY_PATH      =
+OPENGL_LIBS       = -lglut -lGL -lX11
 
 # # Windows / Cygwin
- INCLUDE_PATH      = -I/usr/include/opengl
- LIBRARY_PATH      = -L/usr/lib/w32api
- OPENGL_LIBS       = -lglut -lopengl32 -lm
+#INCLUDE_PATH      = -I/usr/include/opengl
+#LIBRARY_PATH      = -L/usr/lib/w32api
+#OPENGL_LIBS       = -lglut -lopengl32 -lm
 
 #######################################################################################################
 

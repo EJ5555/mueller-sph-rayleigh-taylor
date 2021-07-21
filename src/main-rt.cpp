@@ -14,7 +14,7 @@ using namespace Eigen;
 
 // "Particle-Based Fluid Simulation for Interactive Applications"
 // solver parameters
-const static float M_PI = 3.14159265359;
+//const static float M_PI = 3.14159265359;
 static Vector2d G(0.f, 12000.f * -9.8f); // external (gravitational) forces
 const static float REST_DENS = 1000.f;		 // rest density
 const static float REST_DENS2 = 1000.f;
@@ -98,10 +98,10 @@ void InitSPH(void)
 		float sigma = MASS * MAX_PARTICLES / (VIEW_WIDTH * REST_DENS); //GAS_CONST / (MASS * (-1.f) * G[1]) * 350000.f;
 		float y = -sigma *1000* log(1 - zufall());
 		float x = zufall() * VIEW_WIDTH;
-	
+
 		particles.push_back(Particle(x, y, MASS, REST_DENS, GAS_CONST, "blue"));
 	}
-	
+
 
 	//for (auto& p : particles) {
 	//	p.v(0) = 5000.f;
@@ -112,7 +112,7 @@ void InitSPH(void)
 	//	for (float x = 2.f * EPS; x <= VIEW_WIDTH - 2.f * EPS; x += dh)
 	//	{
 	//		particles.push_back(Particle(x, y, MASS, REST_DENS, "blue"));
-	//	
+	//
 	//	}
 	//	y += dh;
     //}
