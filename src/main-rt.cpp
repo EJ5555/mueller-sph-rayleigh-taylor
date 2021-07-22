@@ -275,15 +275,6 @@ void InitGL(void)
 	glMatrixMode(GL_PROJECTION);
 }
 
-void renderBitmapString(float x, float y, void *font, string str)
-{
-  glRasterPos2f(x,y);
-  for (string::iterator c = (&str)->begin(); c != (&str)->end(); ++c)
-  {
-    glutBitmapCharacter(font, *c);
-  }
-}
-
 
 void Render(void)
 {
