@@ -2,4 +2,5 @@ sph
 obj/
 .DS_Store
 sph-rt
+sph
 *.exe
