@@ -27,7 +27,7 @@ const static double VIEW_HEIGHT = 1.5 * 600.f;
 
 // "Particle-Based Fluid Simulation for Interactive Applications"
 // solver parameters
-const static float M_PI = 3.14159265359;
+//const static float M_PI = 3.14159265359;
 static Vector2d G(0.f, -9.8f); // external (gravitational) forces
 const static float REST_DENS = 0.f;//1000.f;		 // rest density
 const static float REST_DENS2 = 0.f;
@@ -162,7 +162,7 @@ void ComputeForces(void)
 			if (r < H)
 			{
 				// compute pressure force contribution
-				fpress += rij.normalized() * pj.m * (pi.p + pj.p) / (2.f * pj.rho) * SPIKY_GRAD * pow(H - r, 2.f);
+				fpress += rij.normalized() * pi.m * pj.m * (pi.p / pow(pi.rho, 2) + pj.p / pow(pj.rho, 2)) * SPIKY_GRAD * pow(H - r, 2.f);
 				// compute viscosity force contribution
 				fvisc += pi.vs * pj.m * (pj.v - pi.v) / pj.rho * VISC_LAP * (H - r);
 			}
@@ -258,6 +258,16 @@ void InitGL(void)
 	glMatrixMode(GL_PROJECTION);
 }
 
+void renderBitmapString(float x, float y, void *font, string str)
+{
+  glRasterPos2f(x,y);
+  for (string::iterator c = (&str)->begin(); c != (&str)->end(); ++c)
+  {
+    glutBitmapCharacter(font, *c);
+  }
+}
+
+
 void Render(void)
 {
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -294,9 +304,15 @@ void Render(void)
 	}
 	glEnd();
 
+	glColor4f(0.1f, 0.1f, 0.1f, 0.0f);
+	std::ostringstream stream;
+	stream << "t = " << T;
+	std::string text = stream.str();
+	renderBitmapString(5, VIEW_HEIGHT-25, GLUT_BITMAP_TIMES_ROMAN_24, text);
 
 	glutSwapBuffers();
 }
+
 
 void Keyboard(unsigned char c, __attribute__((unused)) int x, __attribute__((unused)) int y)
 {
@@ -325,7 +341,7 @@ int main(int argc, char **argv)
 	omp_set_num_threads(4);
 	glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 	glutInit(&argc, argv);
-	glutCreateWindow("Müller SPH");
+	glutCreateWindow("Müller SPH - Rayleigh-Taylor Instabilität");
 	glutDisplayFunc(Render);
 	glutIdleFunc(Update);
 	glutKeyboardFunc(Keyboard);
