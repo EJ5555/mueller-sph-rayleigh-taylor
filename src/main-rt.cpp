@@ -19,10 +19,10 @@ const static int DAM_PARTICLES = 40000;
 const static int BLOCK_PARTICLES = 250;
 
 // rendering projection parameters
-const static int WINDOW_WIDTH = 800;
-const static int WINDOW_HEIGHT = 600;
-const static double VIEW_WIDTH = 1.5 * 800.f;
-const static double VIEW_HEIGHT = 1.5 * 600.f;
+const static int WINDOW_WIDTH = 1000;
+const static int WINDOW_HEIGHT = 800;
+const static double VIEW_WIDTH = 1.5 * WINDOW_WIDTH;
+const static double VIEW_HEIGHT = 1.5 * WINDOW_HEIGHT;
 
 
 // "Particle-Based Fluid Simulation for Interactive Applications"
